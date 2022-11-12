@@ -10,13 +10,19 @@ import {
     StyleSheet ,
     Alert,
     StatusBar,
+    ActivityIndicator,
+    state,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ActivityIndicator } from 'react-native-paper';
-import { firebase} from '../firebase';
+import { database, firebase} from '../firebase';
+import { getDatabase, ref, set} from "firebase/database";
 import {LinearGradient} from 'expo-linear-gradient';
-export default function Upload() {
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
+export default function Upload({navigation}) {
 
+
+   const [isLoading,setisLoading]=useState(false);
 
     const [image, setImage] = useState(null);
     const[uploading,setUploading]=useState(false)
@@ -35,45 +41,79 @@ export default function Upload() {
       }
     };
 
-    const uploadImage = async () =>{
-        const response=fetch(image);
-        const blob=await response(blob);
-        const filename=image.substring(image.lastIndexOf('/')+1);
-        var ref=firebase.storage().ref().child(filename).put(blob);
-
-        try{
-            await ref;
-
-        }catch(e){
-         console.log(e);
-        }
-        setUploading(false);
-        Alert.alert("photo Uploaded..");
-        setImage(null);
-    };
-
-
-
-    const uploadCall=()=>{
-   
-        Alert.alert(
-            "SUCCESS",
-            "Image Successfull Uploaded To Firebase..",
-            [
-                {
-    
-                    text: "Ok",
-                   
-                  style: "Ok"
-                }
-            ]
-          );
-        
+    function writeUserData(userId,imageUrl) {
+      const db = getDatabase();
       
-    }
+      set(ref(db, 'users/' + userId), {
+        userId:userId,
+        profile_picture : imageUrl,
+        count:0,
+      }).then(()=>{
+       console.log("data updatated");
+      })
+      .catch((error)=>{
+        alert(error);
+       })
+      return
+    };
+  
 
 
 
+    const uploadImage = async () => {
+         setisLoading( true );
+
+        const blob = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            resolve(xhr.response);
+          };
+          xhr.onerror = function() {
+            reject(new TypeError('Network request failed'));
+          };
+          xhr.responseType = 'blob';
+          xhr.open('GET', image, true);
+          xhr.send(null);
+        })
+        let uuuid=uuidv4();
+        const ref = firebase.storage().ref().child(uuuid)
+        const snapshot = ref.put(blob)
+        snapshot.on(firebase.storage.TaskEvent.STATE_CHANGED,
+          ()=>{
+            setUploading(true)
+          },
+          (error) => {
+            setUploading(false)
+            console.log(error)
+            blob.close()
+            return 
+          },
+          () => {
+            snapshot.snapshot.ref.getDownloadURL().then((url) => {
+              setUploading(false)
+              console.log("Download URL: ", url)
+              setImage(url)
+               writeUserData(uuuid,url);
+               setisLoading(false);
+              Alert.alert(
+                "SUCCESS",
+                "You have successfully Posted",
+                [
+                    {
+        
+                        text: "Ok",
+                        onPress: () => navigation.navigate('FEED', { screen: 'Feed' }),
+                      style: "Ok"
+                    }
+                ]
+              );
+              blob.close()
+              return url
+            })
+          }
+         
+          )
+      }
     return (
       <View style={{top:100}}>
          <TouchableOpacity
@@ -94,7 +134,8 @@ export default function Upload() {
        </View>
         <View style={{top:10}}>
         <TouchableOpacity
-              onPress={uploadCall}>
+              onPress={uploadImage}
+             >
               <View style={styles.button}>
                 <LinearGradient
                    colors={['purple', '#01ab9d']}
@@ -106,6 +147,7 @@ export default function Upload() {
                 </LinearGradient>
                 </View>
             </TouchableOpacity>
+            <ActivityIndicator size="large" animating={isLoading} />
       </View>
       </View>
     );

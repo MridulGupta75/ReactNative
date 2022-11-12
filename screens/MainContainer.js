@@ -12,11 +12,12 @@ import {
     Platform,
     StyleSheet ,
     StatusBar,
+    DevSettings,
 } from 'react-native';
 
 import Feed from './Feed';
 import Upload from './Upload';
-
+import Reload from './Reload';
 
 const Tab = createBottomTabNavigator();
 
@@ -88,6 +89,34 @@ function MainContainer() {
 
         }
         />
+
+
+<Tab.Screen name="Loggging Out..." component={Reload}
+        options={{
+            tabBarIcon:({focused})=>(
+                <View style={{alignItems:'center',justifyContent:'center',top:10}}>
+                    <Image
+                    source={require('../assets/logout.png')}
+                    resizeMode='contain'
+                    style={{
+                        width:45,
+                        height:37,
+                        tintColor:focused ? 'white':'#94a0a6'
+                    }
+
+                    }
+                    />
+                    <Text style={{color:focused ? 'white':'#94a0a6',fontSize:14}}>LOGOUT</Text>
+                    
+                </View>
+
+            ),
+        }
+
+        }
+        />
+
+
 
       </Tab.Navigator>
     // </NavigationContainer>
